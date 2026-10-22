@@ -346,7 +346,7 @@ func runServer(args []string) {
 	portFlag := fs.String("port", envOr("EVPN_PORT", "8443"), "listen port")
 	pathFlag := fs.String("path", envOr("EVPN_PATH", defaultPath), "carrier endpoint path (must match the client profile)")
 	tokenFlag := fs.String("token", envOr("EVPN_TOKEN", ""), "single shared token (only used when no -peers file is set)")
-	appFlag := fs.String("app", envOr("EVPN_APP_NAME", "orbix-telemetry"), "app name shown in the decoy JSON response")
+	appFlag := fs.String("app", envOr("EVPN_APP_NAME", "telemetry"), "app name shown in the decoy JSON response")
 	fs.Parse(args)
 	fakeApp = *appFlag
 
@@ -414,7 +414,7 @@ func runServer(args []string) {
 }
 
 // fakeApp is the "app" value in the decoy response (set via -app / EVPN_APP_NAME).
-var fakeApp = "orbix-telemetry"
+var fakeApp = "telemetry"
 
 func serveFake(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
@@ -624,7 +624,7 @@ func runClient(args []string) {
 		log.Fatal("no token: use a profile (-c FILE) or set EVPN_TOKEN")
 	}
 
-	car := &carrier{url: scheme + "://" + host + ":" + port + path, token: token}
+	car := &carrier{url: scheme + "://" + net.JoinHostPort(host, port) + path, token: token}
 
 	ln, err := net.Listen("tcp", listen)
 	if err != nil {

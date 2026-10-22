@@ -230,7 +230,7 @@ func StartService(p *Profile) (*Service, error) {
 		scheme = "wss"
 	}
 	s := &Service{
-		car: &carrier{url: scheme + "://" + p.Server + ":" + p.Port + p.Path, token: p.Token},
+		car: &carrier{url: scheme + "://" + net.JoinHostPort(p.Server, p.Port) + p.Path, token: p.Token},
 	}
 	ln, err := net.Listen("tcp", p.Socks)
 	if err != nil {
