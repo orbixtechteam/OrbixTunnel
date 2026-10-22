@@ -188,7 +188,9 @@ both); ship all three files together.
 - **Proxy mode** (no admin): SOCKS5 on `127.0.0.1:1080` — point your browser/apps
   at it.
 - **Full tunnel** (admin): captures the whole device via sing-box. On macOS the
-  app asks for your admin password automatically; on Windows run it elevated.
+  app asks for your admin password once per launch (a small root helper then
+  starts/stops the tunnel and cleans up if the app exits); on Windows run it
+  elevated.
 
 One tunnel is active at a time. Closing the window keeps the app running in the
 menu-bar tray (the tunnel stays up); use the tray's **Quit** to exit and tear

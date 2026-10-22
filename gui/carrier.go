@@ -169,7 +169,9 @@ func (c *carrier) session() (*yamux.Session, error) {
 	h := http.Header{}
 	h.Set("X-Evpn-Token", c.token)
 	h.Set("User-Agent", browserUA)
-	wsc, _, err := websocket.Dial(context.Background(), c.url, &websocket.DialOptions{HTTPHeader: h})
+	dctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	wsc, _, err := websocket.Dial(dctx, c.url, &websocket.DialOptions{HTTPHeader: h})
 	if err != nil {
 		return nil, err
 	}
@@ -205,6 +207,25 @@ func (c *carrier) open() (net.Conn, error) {
 	return nil, errors.New("carrier unavailable")
 }
 
+// check reports whether the carrier is reachable, re-dialing if the session
+// dropped, and pings the live session to catch half-dead connections.
+func (c *carrier) check() error {
+	sess, err := c.session()
+	if err != nil {
+		return err
+	}
+	if _, err := sess.Ping(); err != nil {
+		c.mu.Lock()
+		if c.sess == sess {
+			c.sess = nil
+		}
+		c.mu.Unlock()
+		sess.Close()
+		return err
+	}
+	return nil
+}
+
 func (c *carrier) close() {
 	c.mu.Lock()
 	if c.sess != nil {
@@ -222,6 +243,26 @@ type Service struct {
 	car     *carrier
 	ln      net.Listener
 	tunStop func() bool // returns false if the tunnel could not be torn down
+
+	done     chan struct{} // closed by Stop; ends Watch
+	doneOnce sync.Once
+}
+
+// Watch polls the carrier every 3s and calls cb with whether it is reachable.
+// It runs until Stop.
+func (s *Service) Watch(cb func(up bool)) {
+	go func() {
+		t := time.NewTicker(3 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-s.done:
+				return
+			case <-t.C:
+				cb(s.car.check() == nil)
+			}
+		}
+	}()
 }
 
 func StartService(p *Profile) (*Service, error) {
@@ -230,7 +271,8 @@ func StartService(p *Profile) (*Service, error) {
 		scheme = "wss"
 	}
 	s := &Service{
-		car: &carrier{url: scheme + "://" + net.JoinHostPort(p.Server, p.Port) + p.Path, token: p.Token},
+		car:  &carrier{url: scheme + "://" + net.JoinHostPort(p.Server, p.Port) + p.Path, token: p.Token},
+		done: make(chan struct{}),
 	}
 	ln, err := net.Listen("tcp", p.Socks)
 	if err != nil {
@@ -264,6 +306,7 @@ func (s *Service) Stop() bool {
 		}
 		s.tunStop = nil
 	}
+	s.doneOnce.Do(func() { close(s.done) })
 	if s.ln != nil {
 		s.ln.Close()
 	}

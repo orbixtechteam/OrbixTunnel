@@ -139,12 +139,17 @@ func saveProfile(p *Profile) (*Profile, error) {
 	}
 	body := fmt.Sprintf("# Orbix Tunnel profile - %s\nname = %s\nserver = %s\nport = %s\npath = %s\ntls = %s\ntoken = %s\nsocks = %s\n",
 		p.Name, p.Name, p.Server, p.Port, p.Path, tls, p.Token, p.Socks)
-	dst := filepath.Join(profilesDir(), sanitize(p.Name)+".orb")
+	dst := profilePath(p.Name)
 	if err := os.WriteFile(dst, []byte(body), 0600); err != nil {
 		return nil, err
 	}
 	p.File = dst
 	return p, nil
+}
+
+// profilePath is where a profile with this name is stored.
+func profilePath(name string) string {
+	return filepath.Join(profilesDir(), sanitize(name)+".orb")
 }
 
 func deleteProfile(p *Profile) error {

@@ -144,11 +144,13 @@ func (s *Service) StartTUN(p *Profile) error {
 	if err != nil {
 		return err
 	}
-	// macOS app double-clicked (not root): launch sing-box via an admin prompt.
+	// macOS app double-clicked (not root): sing-box runs under a root helper
+	// that is started with a single admin prompt per app launch (helper_darwin.go).
 	if runtime.GOOS == "darwin" && os.Geteuid() != 0 {
-		return s.startTUNDarwinElevated(sb, cfg)
+		return s.startTUNDarwin(sb, cfg)
 	}
 
+	flushDNS()
 	cmd := exec.Command(sb, "run", "-c", cfg)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -168,33 +170,6 @@ func (s *Service) StartTUN(p *Profile) error {
 		}
 		flushDNS()
 		return true
-	}
-	return nil
-}
-
-// startTUNDarwinElevated runs sing-box as root through an osascript admin
-// prompt (so the double-clicked .app can bring up the TUN), records the pid,
-// and stops it with another admin prompt.
-func (s *Service) startTUNDarwinElevated(sb, cfg string) error {
-	// Kill any previous instance via its pidfile (robust across app relaunches),
-	// then start fresh and record the new pid. A pidfile avoids `pkill -f`, which
-	// would also match this launcher's own command line (it contains the config
-	// path) and kill itself.
-	// The binary may live in "Orbix Tunnel.app" (space in the path), so both
-	// paths are single-quoted for the shell and the whole command is escaped
-	// for the AppleScript string literal.
-	shell := fmt.Sprintf(
-		"OLD=$(cat /tmp/evpn-sb.pid 2>/dev/null); kill $OLD 2>/dev/null; %s run -c %s </dev/null >/tmp/evpn-sb.log 2>&1 & echo $! > /tmp/evpn-sb.pid",
-		shQuote(sb), shQuote(cfg))
-	start := fmt.Sprintf(`do shell script "%s" with administrator privileges`, asEscape(shell))
-	if err := exec.Command("osascript", "-e", start).Run(); err != nil {
-		return fmt.Errorf("admin launch failed (sing-box): %v", err)
-	}
-	s.tunStop = func() bool {
-		// SIGTERM sing-box, then wait (as root) until it has actually exited so
-		// it finishes restoring the system routes before we close the SOCKS proxy.
-		stop := `do shell script "P=$(cat /tmp/evpn-sb.pid 2>/dev/null); kill $P 2>/dev/null; for i in $(seq 1 25); do kill -0 $P 2>/dev/null || break; sleep 0.2; done; kill -0 $P 2>/dev/null && kill -9 $P 2>/dev/null; rm -f /tmp/evpn-sb.pid; dscacheutil -flushcache; killall -HUP mDNSResponder" with administrator privileges`
-		return exec.Command("osascript", "-e", stop).Run() == nil
 	}
 	return nil
 }
