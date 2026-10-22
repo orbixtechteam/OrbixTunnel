@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../cli"
 go mod tidy
-GOOS=linux GOARCH=amd64 go build -o ../evpn-linux-amd64 .
-echo "built evpn-linux-amd64"
-echo "  scp evpn-linux-amd64 root@YOUR_SERVER:/usr/local/bin/evpn"
-echo "  ssh root@YOUR_SERVER 'EVPN_PORT=8443 evpn server -peers /etc/evpn/peers.txt'"
+GOOS=linux GOARCH=amd64 go build -o ../orbi-linux-amd64 .
+echo "built orbi-linux-amd64"
+echo "  scp orbi-linux-amd64 root@YOUR_SERVER:/usr/local/bin/orbi"
+echo "  ssh root@YOUR_SERVER 'EVPN_PORT=8443 orbi server -peers /etc/orbi/peers.txt'"

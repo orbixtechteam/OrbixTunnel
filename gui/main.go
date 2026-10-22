@@ -35,7 +35,7 @@ type ui struct {
 func main() {
 	a := app.New()
 	a.Settings().SetTheme(forcedDark{})
-	w := a.NewWindow("eVPN")
+	w := a.NewWindow("Orbi-VPN")
 	w.Resize(fyne.NewSize(720, 480))
 
 	u := &ui{win: w, selected: -1}

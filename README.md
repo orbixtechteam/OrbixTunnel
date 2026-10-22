@@ -27,19 +27,19 @@ Then create a client profile (adds a token to the peers file; no restart
 needed — new tokens are accepted live):
 
 ```bash
-evpn gen -name telefonum -server $(curl -s ifconfig.me) -port 8443 \
-  -peers /etc/evpn/peers.txt -out telefonum.orb
+orbi gen -name telefonum -server $(curl -s ifconfig.me) -port 8443 \
+  -peers /etc/orbi/peers.txt -out telefonum.orb
 ```
 
 Copy `telefonum.orb` to the client. Manage the service with
-`systemctl status|restart|stop evpn`. Revoke a client by deleting its line in
-`/etc/evpn/peers.txt`.
+`systemctl status|restart|stop orbi`. Revoke a client by deleting its line in
+`/etc/orbi/peers.txt`.
 
 Prefer not to install on the server? Build the Linux binary locally and copy it:
 
 ```bash
-bash scripts/build-server.sh                 # -> evpn-linux-amd64
-scp evpn-linux-amd64 root@SERVER:/usr/local/bin/evpn
+bash scripts/build-server.sh                 # -> orbi-linux-amd64
+scp orbi-linux-amd64 root@SERVER:/usr/local/bin/orbi
 ```
 
 ## Client — desktop app

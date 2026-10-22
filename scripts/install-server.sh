@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full server install for a Debian/Ubuntu VPS. Installs Go if needed, builds the
-# carrier, creates a peers file, and runs it as a systemd service on tcp/8443.
+# carrier, creates a peers file, and runs it as the "orbi" systemd service.
 #
 # Usage (as root on the VPS):   bash scripts/install-server.sh [PORT]
 set -euo pipefail
@@ -9,7 +9,7 @@ PORT="${1:-8443}"
 GOVER="1.23.4"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo ">> eVPN server install (port ${PORT})"
+echo ">> Orbi-VPN server install (port ${PORT})"
 
 # --- Go -----------------------------------------------------------------
 need_go=1
@@ -30,21 +30,21 @@ export PATH="/usr/local/go/bin:$PATH"
 
 # --- build --------------------------------------------------------------
 echo ">> building carrier"
-( cd "${REPO_DIR}/cli" && go mod tidy && go build -o /usr/local/bin/evpn . )
+( cd "${REPO_DIR}/cli" && go mod tidy && go build -o /usr/local/bin/orbi . )
 
 # --- peers + service ----------------------------------------------------
-mkdir -p /etc/evpn
-touch /etc/evpn/peers.txt
-chmod 600 /etc/evpn/peers.txt
+mkdir -p /etc/orbi
+touch /etc/orbi/peers.txt
+chmod 600 /etc/orbi/peers.txt
 
-cat > /etc/systemd/system/evpn.service <<EOF
+cat > /etc/systemd/system/orbi.service <<EOF
 [Unit]
-Description=eVPN carrier
+Description=Orbi-VPN carrier
 After=network.target
 
 [Service]
 Environment=EVPN_PORT=${PORT}
-ExecStart=/usr/local/bin/evpn server -peers /etc/evpn/peers.txt
+ExecStart=/usr/local/bin/orbi server -peers /etc/orbi/peers.txt
 Restart=always
 RestartSec=2
 User=root
@@ -56,10 +56,10 @@ EOF
 command -v ufw >/dev/null 2>&1 && ufw allow "${PORT}/tcp" || true
 
 systemctl daemon-reload
-systemctl enable --now evpn.service
+systemctl enable --now orbi.service
 
 echo ">> done. status:"
-systemctl --no-pager status evpn.service | head -n 6 || true
+systemctl --no-pager status orbi.service | head -n 6 || true
 echo
 echo "Create a client profile with:"
-echo "  evpn gen -name NAME -server \$(curl -s ifconfig.me) -port ${PORT} -peers /etc/evpn/peers.txt -out NAME.evpn"
+echo "  orbi gen -name NAME -server \$(curl -s ifconfig.me) -port ${PORT} -peers /etc/orbi/peers.txt -out NAME.orb"

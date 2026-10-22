@@ -4,6 +4,9 @@
 /evpn-gui
 /evpn-gui.exe
 /evpn-linux-amd64
+/orbi-linux-amd64
+/orbi
+/orbi.exe
 
 # client profiles (contain secret tokens) and runtime state
 *.orb

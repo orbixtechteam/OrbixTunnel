@@ -18,18 +18,18 @@ if [ ! -f Icon.png ]; then
   go run "$root/scripts/mkicon.go" Icon.png
 fi
 
-echo ">> packaging eVPN.app"
+echo ">> packaging Orbi-VPN.app"
 go mod tidy
-rm -rf "$root/eVPN.app"
-fyne package -os darwin -name eVPN -icon Icon.png -app-id com.evpn.client
-mv -f eVPN.app "$root/eVPN.app"
+rm -rf "$root/Orbi-VPN.app"
+fyne package -os darwin -name Orbi-VPN -icon Icon.png -id com.orbi.vpn
+mv -f Orbi-VPN.app "$root/Orbi-VPN.app"
 
-echo ">> building eVPN.dmg"
+echo ">> building Orbi-VPN.dmg"
 cd "$root"
-rm -f eVPN.dmg
-hdiutil create -volname eVPN -srcfolder eVPN.app -ov -format UDZO eVPN.dmg
+rm -f Orbi-VPN.dmg
+hdiutil create -volname Orbi-VPN -srcfolder Orbi-VPN.app -ov -format UDZO Orbi-VPN.dmg
 
 echo
-echo "built:  $root/eVPN.app   $root/eVPN.dmg"
-echo "Open the .dmg and drag eVPN to Applications. Double-click to run."
+echo "built:  $root/Orbi-VPN.app   $root/Orbi-VPN.dmg"
+echo "Open the .dmg and drag Orbi-VPN to Applications. Double-click to run."
 echo "Full tunnel asks for your admin password (needs: brew install sing-box)."

@@ -285,7 +285,7 @@ func runGen(args []string) {
 	port := fs.String("port", "8443", "server port")
 	path := fs.String("path", defaultPath, "endpoint path")
 	tls := fs.Bool("tls", false, "use wss (TLS)")
-	peers := fs.String("peers", envOr("EVPN_PEERS", "/root/evpn-peers.txt"), "peers file to append the token to")
+	peers := fs.String("peers", envOr("EVPN_PEERS", "/etc/orbi/peers.txt"), "peers file to append the token to")
 	out := fs.String("out", "", "output profile file (default: stdout)")
 	socks := fs.String("socks", "127.0.0.1:1080", "local SOCKS listen for the client")
 	fs.Parse(args)
@@ -397,9 +397,9 @@ func runServer(args []string) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { serveFake(w) })
 
 	if peersPath != "" {
-		log.Printf("[evpn] carrier listening on :%s path=%s peers=%s", port, path, peersPath)
+		log.Printf("[orbi] carrier listening on :%s path=%s peers=%s", port, path, peersPath)
 	} else {
-		log.Printf("[evpn] carrier listening on :%s path=%s (single token)", port, path)
+		log.Printf("[orbi] carrier listening on :%s path=%s (single token)", port, path)
 	}
 	log.Fatal((&http.Server{Addr: ":" + port, Handler: mux}).ListenAndServe())
 }
@@ -610,7 +610,7 @@ func runClient(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("[evpn] SOCKS5 %s  ->  %s", listen, car.url)
+	log.Printf("[orbi] SOCKS5 %s  ->  %s", listen, car.url)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
