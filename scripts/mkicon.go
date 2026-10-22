@@ -1,6 +1,7 @@
 //go:build ignore
 
-// Generates a simple square app icon PNG. Usage: go run mkicon.go Icon.png
+// Generates the Orbi-VPN app icon: a near-black rounded square with an
+// off-white ring, on a white canvas. Usage: go run mkicon.go Icon.png
 package main
 
 import (
@@ -11,39 +12,63 @@ import (
 	"os"
 )
 
+const (
+	size   = 1024
+	margin = 70.0  // white border around the rounded square
+	radius = 230.0 // corner radius of the rounded square
+	ringR  = 330.0 // ring outer radius
+	ringW  = 44.0  // ring thickness
+)
+
+var (
+	white = color.NRGBA{0xff, 0xff, 0xff, 0xff}
+	black = color.NRGBA{0x0a, 0x0a, 0x0f, 0xff}
+	ring  = color.NRGBA{0xfd, 0xf2, 0xf2, 0xff}
+)
+
+func inRoundRect(px, py, x0, y0, x1, y1, r float64) bool {
+	if px < x0 || px > x1 || py < y0 || py > y1 {
+		return false
+	}
+	cx, cy := x0+r, y0+r
+	if px < cx && py < cy {
+		return math.Hypot(px-cx, py-cy) <= r
+	}
+	cx, cy = x1-r, y0+r
+	if px > cx && py < cy {
+		return math.Hypot(px-cx, py-cy) <= r
+	}
+	cx, cy = x0+r, y1-r
+	if px < cx && py > cy {
+		return math.Hypot(px-cx, py-cy) <= r
+	}
+	cx, cy = x1-r, y1-r
+	if px > cx && py > cy {
+		return math.Hypot(px-cx, py-cy) <= r
+	}
+	return true
+}
+
 func main() {
 	out := "Icon.png"
 	if len(os.Args) > 1 {
 		out = os.Args[1]
 	}
-	const s = 1024
-	img := image.NewRGBA(image.Rect(0, 0, s, s))
+	img := image.NewNRGBA(image.Rect(0, 0, size, size))
+	cx, cy := float64(size)/2, float64(size)/2
+	x0, y0, x1, y1 := margin, margin, float64(size)-margin, float64(size)-margin
 
-	bgTop := color.RGBA{0x0e, 0x1b, 0x2e, 0xff}
-	bgBot := color.RGBA{0x13, 0x33, 0x4d, 0xff}
-	ring := color.RGBA{0x3d, 0xd6, 0xb0, 0xff}
-
-	cx, cy := float64(s)/2, float64(s)/2
-	for y := 0; y < s; y++ {
-		t := float64(y) / float64(s)
-		row := color.RGBA{
-			R: uint8(float64(bgTop.R) + t*(float64(bgBot.R)-float64(bgTop.R))),
-			G: uint8(float64(bgTop.G) + t*(float64(bgBot.G)-float64(bgTop.G))),
-			B: uint8(float64(bgTop.B) + t*(float64(bgBot.B)-float64(bgTop.B))),
-			A: 0xff,
-		}
-		for x := 0; x < s; x++ {
-			d := math.Hypot(float64(x)-cx, float64(y)-cy)
-			switch {
-			case d > 300 && d < 340: // outer ring
-				img.Set(x, y, ring)
-			case d > 150 && d < 185: // inner ring
-				img.Set(x, y, ring)
-			case math.Abs(float64(x)-cx) < 18 && float64(y) > cy-320 && float64(y) < cy+320:
-				img.Set(x, y, ring) // vertical bar through the center
-			default:
-				img.Set(x, y, row)
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			px, py := float64(x)+0.5, float64(y)+0.5
+			c := white
+			if inRoundRect(px, py, x0, y0, x1, y1, radius) {
+				c = black
+				if d := math.Hypot(px-cx, py-cy); d <= ringR && d >= ringR-ringW {
+					c = ring
+				}
 			}
+			img.SetNRGBA(x, y, c)
 		}
 	}
 

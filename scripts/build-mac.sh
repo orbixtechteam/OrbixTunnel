@@ -12,5 +12,5 @@ echo ">> building GUI"
 
 echo
 echo "built: $root/evpn (CLI)   $root/evpn-gui (desktop app)"
-echo "run GUI:            $root/evpn-gui"
-echo "run GUI full tunnel: sudo $root/evpn-gui    (needs: brew install sing-box)"
+echo "run GUI: $root/evpn-gui    (do NOT use sudo; Full tunnel asks for admin itself)"
+echo "Full tunnel needs: brew install sing-box"

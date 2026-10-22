@@ -42,6 +42,20 @@ func main() {
 	u.build()
 	u.reload()
 
+	// Closing the window (or quitting) must tear down the tunnel, otherwise the
+	// root sing-box process keeps the TUN up and the machine loses internet.
+	w.SetCloseIntercept(func() {
+		if u.connected {
+			u.disconnect()
+		}
+		w.Close()
+	})
+	a.Lifecycle().SetOnStopped(func() {
+		if u.svc != nil {
+			u.svc.Stop()
+		}
+	})
+
 	w.SetContent(u.content())
 	w.ShowAndRun()
 }
@@ -66,7 +80,6 @@ func (u *ui) build() {
 
 	u.fullTun = widget.NewCheck("Full tunnel (whole device - will ask for admin)", nil)
 	u.connectBtn = widget.NewButton("Connect", u.onConnect)
-	u.connectBtn.Importance = widget.HighImportance
 	u.status = widget.NewLabel("disconnected")
 	u.exitIP = widget.NewLabel("Exit IP: -")
 

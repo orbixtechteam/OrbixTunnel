@@ -8,15 +8,13 @@ cd "$root/gui"
 # fyne packaging tool
 if ! command -v fyne >/dev/null 2>&1; then
   echo ">> installing fyne tool"
-  go install fyne.io/fyne/v2/cmd/fyne@latest
+  go install fyne.io/tools/cmd/fyne@latest
 fi
 export PATH="$PATH:$(go env GOPATH)/bin"
 
-# icon
-if [ ! -f Icon.png ]; then
-  echo ">> generating icon"
-  go run "$root/scripts/mkicon.go" Icon.png
-fi
+# icon (always regenerate so logo/theme changes apply)
+echo ">> generating icon"
+go run "$root/scripts/mkicon.go" Icon.png
 
 echo ">> packaging Orbi-VPN.app"
 go mod tidy
