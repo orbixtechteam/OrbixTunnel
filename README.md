@@ -83,6 +83,26 @@ A random token is generated, appended to the peers file (**no restart needed** â
 new tokens are accepted live), and written into `phone.orb`. Copy that file to
 the client and import it.
 
+### Custom endpoint path
+
+The carrier path (what the traffic disguises itself as) is configurable. It must
+match on the server and in every client profile.
+
+```bash
+# server
+orbi server -peers /etc/orbi/peers.txt -port 8443 -path /api/game/v4
+#   or in systemd:  systemctl edit orbi  ->  Environment=EVPN_PATH=/api/game/v4
+
+# generate a profile that uses the same path
+orbi gen -name phone -server <IP> -port 8443 -path /api/game/v4 \
+  -peers /etc/orbi/peers.txt -out phone.orb
+```
+
+A request with the wrong path (or wrong token) just gets the boring
+`{"ok":true,"app":"orbix-telemetry"}` response â€” the tunnel never opens, so a
+mismatched path doubles as camouflage. Port is configurable the same way
+(`-port` / `EVPN_PORT`).
+
 ### Manage the service
 
 ```bash

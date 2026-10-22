@@ -76,7 +76,7 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, `usage:
-  evpn server [-peers FILE]
+  evpn server [-peers FILE] [-port 8443] [-path /api/...]
   evpn gen -name NAME -server HOST [-port 8443] [-path /...] [-tls] [-peers FILE] [-out FILE]
   evpn client -c PROFILE.evpn`)
 	os.Exit(1)
@@ -342,10 +342,12 @@ func randHex(n int) string {
 func runServer(args []string) {
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
 	peersFlag := fs.String("peers", envOr("EVPN_PEERS", ""), "peers file (one \"token name\" per line)")
+	portFlag := fs.String("port", envOr("EVPN_PORT", "8443"), "listen port")
+	pathFlag := fs.String("path", envOr("EVPN_PATH", defaultPath), "carrier endpoint path (must match the client profile)")
 	fs.Parse(args)
 
-	port := envOr("EVPN_PORT", "8443")
-	path := envOr("EVPN_PATH", defaultPath)
+	port := *portFlag
+	path := *pathFlag
 	staticToken := envOr("EVPN_TOKEN", "orbix-telemetry-2026")
 	peersPath := *peersFlag
 
