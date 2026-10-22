@@ -25,6 +25,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -344,12 +345,18 @@ func runServer(args []string) {
 	peersFlag := fs.String("peers", envOr("EVPN_PEERS", ""), "peers file (one \"token name\" per line)")
 	portFlag := fs.String("port", envOr("EVPN_PORT", "8443"), "listen port")
 	pathFlag := fs.String("path", envOr("EVPN_PATH", defaultPath), "carrier endpoint path (must match the client profile)")
+	tokenFlag := fs.String("token", envOr("EVPN_TOKEN", ""), "single shared token (only used when no -peers file is set)")
+	appFlag := fs.String("app", envOr("EVPN_APP_NAME", "orbix-telemetry"), "app name shown in the decoy JSON response")
 	fs.Parse(args)
+	fakeApp = *appFlag
 
 	port := *portFlag
 	path := *pathFlag
-	staticToken := envOr("EVPN_TOKEN", "orbix-telemetry-2026")
+	staticToken := *tokenFlag
 	peersPath := *peersFlag
+	if peersPath == "" && staticToken == "" {
+		log.Fatal("no auth configured: set -peers FILE (EVPN_PEERS) or -token VALUE (EVPN_TOKEN)")
+	}
 
 	// authorized reports whether a token may open the carrier. With a peers
 	// file, only listed tokens are accepted (re-read per connection, so new
@@ -406,10 +413,17 @@ func runServer(args []string) {
 	log.Fatal((&http.Server{Addr: ":" + port, Handler: mux}).ListenAndServe())
 }
 
+// fakeApp is the "app" value in the decoy response (set via -app / EVPN_APP_NAME).
+var fakeApp = "orbix-telemetry"
+
 func serveFake(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"ok":true,"app":"orbix-telemetry"}`)
+	b, _ := json.Marshal(struct {
+		OK  bool   `json:"ok"`
+		App string `json:"app"`
+	}{true, fakeApp})
+	w.Write(b)
 }
 
 func handleSession(sess *yamux.Session) {
@@ -576,7 +590,7 @@ func runClient(args []string) {
 	host := envOr("EVPN_SERVER_HOST", "127.0.0.1")
 	port := envOr("EVPN_SERVER_PORT", "8443")
 	path := envOr("EVPN_PATH", defaultPath)
-	token := envOr("EVPN_TOKEN", "orbix-telemetry-2026")
+	token := envOr("EVPN_TOKEN", "")
 
 	if *cfg != "" {
 		p, err := parseProfile(*cfg)
@@ -604,6 +618,10 @@ func runClient(args []string) {
 	}
 	if os.Getenv("EVPN_TLS") == "1" {
 		scheme = "wss"
+	}
+
+	if token == "" {
+		log.Fatal("no token: use a profile (-c FILE) or set EVPN_TOKEN")
 	}
 
 	car := &carrier{url: scheme + "://" + host + ":" + port + path, token: token}

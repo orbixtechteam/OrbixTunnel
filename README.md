@@ -1,4 +1,4 @@
-# Orbi-VPN
+# Orbix Tunnel
 
 *by Orbix Lab*
 
@@ -99,7 +99,8 @@ orbi gen -name phone -server <IP> -port 8443 -path /api/game/v4 \
 ```
 
 A request with the wrong path (or wrong token) just gets the boring
-`{"ok":true,"app":"orbix-telemetry"}` response — the tunnel never opens, so a
+`{"ok":true,"app":"orbix-telemetry"}` response (the `app` value is configurable:
+`orbi server -app myservice` or `EVPN_APP_NAME`) — the tunnel never opens, so a
 mismatched path doubles as camouflage. Port is configurable the same way
 (`-port` / `EVPN_PORT`).
 
@@ -159,10 +160,10 @@ ssh root@SERVER 'systemctl restart orbi'
 ```bash
 xcode-select --install          # once
 bash scripts/build-mac.sh       # quick build -> ./evpn-gui
-bash scripts/package-mac.sh     # app bundle -> Orbi-VPN.app + Orbi-VPN.dmg
+bash scripts/package-mac.sh     # app bundle -> Orbix Tunnel.app + Orbix Tunnel.dmg
 ```
 
-Open `Orbi-VPN.dmg`, drag **Orbi-VPN** to Applications, launch it.
+Open `Orbix Tunnel.dmg`, drag **Orbix Tunnel** to Applications, launch it.
 
 ### Windows
 
@@ -240,6 +241,7 @@ Both sides also read env vars (useful for systemd / scripting):
 | `EVPN_SERVER_HOST` | client: server host            | `127.0.0.1`                   |
 | `EVPN_SERVER_PORT` | client: server port            | `8443`                        |
 | `EVPN_TOKEN`       | single-token mode (no peers)   | —                             |
+| `EVPN_APP_NAME`    | server: `app` value in the decoy JSON response | `orbix-telemetry` |
 | `EVPN_SOCKS`       | client: local SOCKS listen     | `127.0.0.1:1080`              |
 | `EVPN_TLS`         | `1` to use `wss://`            | —                             |
 

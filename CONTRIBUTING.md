@@ -1,6 +1,6 @@
-# Contributing to Orbi-VPN
+# Contributing to Orbix Tunnel
 
-Thanks for your interest in improving Orbi-VPN. Issues and pull requests are
+Thanks for your interest in improving Orbix Tunnel. Issues and pull requests are
 welcome.
 
 ## Project layout
@@ -45,5 +45,5 @@ Please do not include secrets (tokens, `.orb` profiles, `peers.txt`) in issues.
 
 ## Scope / responsible use
 
-Orbi-VPN is for circumventing censorship and running your own private VPN. Keep
+Orbix Tunnel is for circumventing censorship and running your own private VPN. Keep
 contributions aligned with that purpose and with applicable law.

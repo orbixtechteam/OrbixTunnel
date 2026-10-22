@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Package the macOS desktop client as eVPN.app and eVPN.dmg (double-clickable,
-# no terminal). Needs Xcode command line tools.
+# Package the macOS desktop client as "Orbix Tunnel.app" and "Orbix Tunnel.dmg"
+# (double-clickable, no terminal). Needs Xcode command line tools.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root/gui"
+APP="Orbix Tunnel"
 
 # fyne packaging tool
 if ! command -v fyne >/dev/null 2>&1; then
@@ -16,18 +17,18 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 echo ">> generating icon"
 go run "$root/scripts/mkicon.go" Icon.png
 
-echo ">> packaging Orbi-VPN.app"
+echo ">> packaging $APP.app"
 go mod tidy
-rm -rf "$root/Orbi-VPN.app"
-fyne package -os darwin -name Orbi-VPN -icon Icon.png -id com.orbixlab.orbi
-mv -f Orbi-VPN.app "$root/Orbi-VPN.app"
+rm -rf "$root/$APP.app"
+fyne package -os darwin -name "$APP" -icon Icon.png -id com.orbixlab.orbi
+mv -f "$APP.app" "$root/$APP.app"
 
-echo ">> building Orbi-VPN.dmg"
+echo ">> building $APP.dmg"
 cd "$root"
-rm -f Orbi-VPN.dmg
-hdiutil create -volname Orbi-VPN -srcfolder Orbi-VPN.app -ov -format UDZO Orbi-VPN.dmg
+rm -f "$APP.dmg"
+hdiutil create -volname "$APP" -srcfolder "$APP.app" -ov -format UDZO "$APP.dmg"
 
 echo
-echo "built:  $root/Orbi-VPN.app   $root/Orbi-VPN.dmg"
-echo "Open the .dmg and drag Orbi-VPN to Applications. Double-click to run."
+echo "built:  $root/$APP.app   $root/$APP.dmg"
+echo "Open the .dmg and drag $APP to Applications. Double-click to run."
 echo "Full tunnel asks for your admin password (needs: brew install sing-box)."

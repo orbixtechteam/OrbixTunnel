@@ -9,7 +9,7 @@ PORT="${1:-8443}"
 GOVER="1.23.4"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo ">> Orbi-VPN server install (port ${PORT})"
+echo ">> Orbix Tunnel server install (port ${PORT})"
 
 # --- Go -----------------------------------------------------------------
 need_go=1
@@ -39,7 +39,7 @@ chmod 600 /etc/orbi/peers.txt
 
 cat > /etc/systemd/system/orbi.service <<EOF
 [Unit]
-Description=Orbi-VPN carrier
+Description=Orbix Tunnel carrier
 After=network.target
 
 [Service]

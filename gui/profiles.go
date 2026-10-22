@@ -137,7 +137,7 @@ func saveProfile(p *Profile) (*Profile, error) {
 	if p.TLS {
 		tls = "true"
 	}
-	body := fmt.Sprintf("# Orbi-VPN profile - %s\nname = %s\nserver = %s\nport = %s\npath = %s\ntls = %s\ntoken = %s\nsocks = %s\n",
+	body := fmt.Sprintf("# Orbix Tunnel profile - %s\nname = %s\nserver = %s\nport = %s\npath = %s\ntls = %s\ntoken = %s\nsocks = %s\n",
 		p.Name, p.Name, p.Server, p.Port, p.Path, tls, p.Token, p.Socks)
 	dst := filepath.Join(profilesDir(), sanitize(p.Name)+".orb")
 	if err := os.WriteFile(dst, []byte(body), 0600); err != nil {

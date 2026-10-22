@@ -36,7 +36,7 @@ type ui struct {
 func main() {
 	a := app.New()
 	a.Settings().SetTheme(forcedDark{})
-	w := a.NewWindow("Orbi-VPN")
+	w := a.NewWindow("Orbix Tunnel")
 	w.Resize(fyne.NewSize(720, 480))
 
 	u := &ui{win: w, selected: -1}
@@ -62,7 +62,7 @@ func (u *ui) setupTray(a fyne.App) {
 	if !ok {
 		return
 	}
-	m := fyne.NewMenu("Orbi-VPN",
+	m := fyne.NewMenu("Orbix Tunnel",
 		fyne.NewMenuItem("Show", func() { u.win.Show(); u.win.RequestFocus() }),
 		fyne.NewMenuItem("Disconnect", func() {
 			if u.connected {
