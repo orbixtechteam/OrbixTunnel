@@ -65,7 +65,7 @@ scripts/  build & install helpers
 ### Install (one command)
 
 ```bash
-git clone https://github.com/<you>/orbi-vpn.git && cd orbi-vpn
+git clone https://github.com/orbixtechteam/OrbixTunnel.git && cd OrbixTunnel
 sudo bash scripts/install-server.sh 8443
 ```
 
@@ -118,7 +118,7 @@ journalctl -u orbi -f        # live logs
 ### Update to the latest version
 
 ```bash
-cd orbi-vpn
+cd OrbixTunnel
 git pull
 cd cli && go build -o /usr/local/bin/orbi . && cd ..
 systemctl restart orbi
