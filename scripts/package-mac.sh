@@ -34,6 +34,21 @@ else
   echo "!! sing-box not found (brew install sing-box, or set SINGBOX_BIN) - Full tunnel will not work in this build"
 fi
 
+# Ad-hoc sign (no Apple account needed), like electron-builder does. Without a
+# valid signature, Macs that get the app via download/AirDrop show "is damaged
+# and can't be opened". Strip stray attributes and the Go linker's own
+# signature first, sign the bundled sing-box, then the whole app, then verify.
+echo ">> ad-hoc signing"
+APPDIR="$root/$APP.app"
+xattr -cr "$APPDIR"
+EXE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPDIR/Contents/Info.plist")"
+codesign --remove-signature "$APPDIR/Contents/MacOS/$EXE" 2>/dev/null || true
+if [ -f "$APPDIR/Contents/MacOS/sing-box" ]; then
+  codesign --force --sign - "$APPDIR/Contents/MacOS/sing-box"
+fi
+codesign --force --deep --sign - "$APPDIR"
+codesign --verify --deep --strict --verbose=2 "$APPDIR"
+
 echo ">> building $APP.dmg"
 cd "$root"
 rm -f "$APP.dmg"
@@ -45,4 +60,5 @@ hdiutil create -volname "$APP" -srcfolder "$APP.app" -ov -fs HFS+ -size "${SIZE_
 echo
 echo "built:  $root/$APP.app   $root/$APP.dmg"
 echo "Open the .dmg and drag $APP to Applications. Double-click to run."
+echo "On another Mac (not notarized): right-click the app > Open, or run: xattr -cr \"/Applications/$APP.app\""
 echo "Full tunnel asks for your admin password (sing-box is bundled in the app)."
