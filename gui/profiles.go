@@ -6,6 +6,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,6 +110,37 @@ func importProfile(srcFile string) (*Profile, error) {
 	}
 	dst := filepath.Join(profilesDir(), sanitize(p.Name)+".orb")
 	if err := os.WriteFile(dst, data, 0600); err != nil {
+		return nil, err
+	}
+	p.File = dst
+	return p, nil
+}
+
+// saveProfile writes a profile entered by hand into the store as a .orb file.
+func saveProfile(p *Profile) (*Profile, error) {
+	if p.Server == "" || p.Token == "" {
+		return nil, errors.New("server and token are required")
+	}
+	if p.Name == "" {
+		p.Name = "profile"
+	}
+	if p.Port == "" {
+		p.Port = "8443"
+	}
+	if p.Path == "" {
+		p.Path = "/api/v2/telemetry/ingest"
+	}
+	if p.Socks == "" {
+		p.Socks = "127.0.0.1:1080"
+	}
+	tls := "false"
+	if p.TLS {
+		tls = "true"
+	}
+	body := fmt.Sprintf("# Orbi-VPN profile - %s\nname = %s\nserver = %s\nport = %s\npath = %s\ntls = %s\ntoken = %s\nsocks = %s\n",
+		p.Name, p.Name, p.Server, p.Port, p.Path, tls, p.Token, p.Socks)
+	dst := filepath.Join(profilesDir(), sanitize(p.Name)+".orb")
+	if err := os.WriteFile(dst, []byte(body), 0600); err != nil {
 		return nil, err
 	}
 	p.File = dst

@@ -1,93 +1,192 @@
-# eVPN
+# Orbi-VPN
 
-A small anti-censorship tunnel. The carrier looks like a telemetry API
-(`POST /api/v2/telemetry/ingest`); a WebSocket upgrade on that path opens the
-real tunnel: one yamux session, each connection a multiplexed stream, TCP and
-UDP. Auth is WireGuard-like — a server peers file plus per-client profiles.
+A lightweight, self-hosted anti-censorship tunnel. The carrier looks like an
+ordinary telemetry API (`POST /api/v2/telemetry/ingest`); a WebSocket upgrade on
+that same path opens the real tunnel. Traffic is multiplexed over one connection
+with [yamux](https://github.com/hashicorp/yamux), carries both **TCP and UDP**
+(so QUIC, DNS and games work), and authenticates WireGuard-style with a
+server-side peers file and per-client profiles.
 
-## Layout
+- **Server** — a single Go binary (`orbi`) you run on any VPS.
+- **Client** — a cross-platform desktop app (macOS / Windows) with a profile
+  list, plus a CLI for scripting.
+- **Full tunnel** — routes the whole device through [sing-box](https://sing-box.sagernet.org)
+  (fake-IP DNS so names resolve server-side, UDP allowed, the server IP kept
+  direct). Needs admin/root.
+- **Proxy mode** — a local SOCKS5 on `127.0.0.1:1080`, no admin needed.
+
+> Built for circumventing network censorship and running your own private VPN.
+> Use it only on networks and traffic you are authorized to tunnel.
+
+---
+
+## How it works
 
 ```
-cli/      server + client + profile generator (one Go binary: evpn)
-gui/      macOS/Windows desktop client (Fyne) with multiple profiles
+app ─▶ SOCKS5 (local)          ┌─ WebSocket /api/v2/telemetry/ingest ─┐
+      or TUN (sing-box) ─▶ orbi client ──── yamux (TCP+UDP streams) ──── orbi server ─▶ internet
+```
+
+1. On the client, each connection becomes one yamux stream over a single
+   WebSocket to the server.
+2. The server dials the real destination (TCP) or relays datagrams (UDP) and
+   pipes the bytes back.
+3. A plain HTTP request to the path (or a wrong token) just returns
+   `{"ok":true,"app":"orbix-telemetry"}` — it looks like a boring API.
+
+---
+
+## Repository layout
+
+```
+cli/      server + client + profile generator (one binary: orbi)
+gui/      desktop client (Fyne), multiple profiles, forced dark UI
 scripts/  build & install helpers
 ```
 
-## Server (Debian/Ubuntu VPS)
+---
 
-One command — installs Go if needed, builds, and runs as a systemd service on
-tcp/8443:
+## Requirements
+
+- **Server:** a Linux VPS (Debian/Ubuntu). The installer pulls Go automatically.
+- **Build from source:** Go 1.22+.
+- **Desktop GUI:** a C toolchain (macOS: `xcode-select --install`; Windows:
+  mingw-w64 / TDM-GCC on `PATH`) — Fyne needs it.
+- **Full tunnel:** [sing-box](https://sing-box.sagernet.org) on the client
+  (`brew install sing-box`; on Windows also `wintun.dll`).
+
+---
+
+## Server
+
+### Install (one command)
 
 ```bash
-git clone <your-repo> evpn && cd evpn
-bash scripts/install-server.sh 8443
+git clone https://github.com/<you>/orbi-vpn.git && cd orbi-vpn
+sudo bash scripts/install-server.sh 8443
 ```
 
-Then create a client profile (adds a token to the peers file; no restart
-needed — new tokens are accepted live):
+This installs Go if needed, builds `/usr/local/bin/orbi`, creates
+`/etc/orbi/peers.txt`, opens the firewall port, and starts the `orbi` systemd
+service.
+
+### Create a client profile
 
 ```bash
-orbi gen -name telefonum -server $(curl -s ifconfig.me) -port 8443 \
-  -peers /etc/orbi/peers.txt -out telefonum.orb
+orbi gen -name phone -server $(curl -s ifconfig.me) -port 8443 \
+  -peers /etc/orbi/peers.txt -out phone.orb
 ```
 
-Copy `telefonum.orb` to the client. Manage the service with
-`systemctl status|restart|stop orbi`. Revoke a client by deleting its line in
-`/etc/orbi/peers.txt`.
+A random token is generated, appended to the peers file (**no restart needed** —
+new tokens are accepted live), and written into `phone.orb`. Copy that file to
+the client and import it.
 
-Prefer not to install on the server? Build the Linux binary locally and copy it:
+### Manage the service
+
+```bash
+systemctl status orbi        # state
+systemctl restart orbi       # restart
+systemctl stop orbi          # stop
+systemctl start orbi         # start
+journalctl -u orbi -f        # live logs
+```
+
+### Update to the latest version
+
+```bash
+cd orbi-vpn
+git pull
+cd cli && go build -o /usr/local/bin/orbi . && cd ..
+systemctl restart orbi
+```
+
+(The peers file and existing profiles are untouched by a rebuild.)
+
+### Revoke a client
+
+Delete its line in `/etc/orbi/peers.txt`. The next connection with that token is
+refused — no restart needed.
+
+```bash
+nano /etc/orbi/peers.txt     # remove the "<token> name" line
+```
+
+### Uninstall
+
+```bash
+systemctl disable --now orbi
+rm -f /etc/systemd/system/orbi.service /usr/local/bin/orbi
+rm -rf /etc/orbi
+systemctl daemon-reload
+```
+
+### Build the server binary elsewhere (no Go on the VPS)
 
 ```bash
 bash scripts/build-server.sh                 # -> orbi-linux-amd64
 scp orbi-linux-amd64 root@SERVER:/usr/local/bin/orbi
+ssh root@SERVER 'systemctl restart orbi'
 ```
+
+---
 
 ## Client — desktop app
 
 ### macOS
+
 ```bash
-xcode-select --install        # once, for the Fyne GUI toolchain
-bash scripts/build-mac.sh     # quick: -> ./evpn-gui (and ./evpn CLI)
-bash scripts/package-mac.sh   # app: -> eVPN.app + eVPN.dmg (double-clickable)
+xcode-select --install          # once
+bash scripts/build-mac.sh       # quick build -> ./evpn-gui
+bash scripts/package-mac.sh     # app bundle -> Orbi-VPN.app + Orbi-VPN.dmg
 ```
-Open `eVPN.dmg`, drag **eVPN** to Applications, launch it. SOCKS mode needs no
-admin; **Full tunnel** asks for your admin password (needs `brew install
-sing-box`). From a terminal you can also run `./evpn-gui` or `sudo ./evpn-gui`.
+
+Open `Orbi-VPN.dmg`, drag **Orbi-VPN** to Applications, launch it.
 
 ### Windows
-Install Go and a C compiler (mingw-w64 / TDM-GCC on PATH), then in PowerShell:
+
+Install Go and a C compiler (mingw-w64 / TDM-GCC on `PATH`), then in PowerShell:
+
 ```powershell
-scripts\build-windows.ps1     # -> evpn-gui.exe (and evpn.exe CLI)
+scripts\build-windows.ps1       # -> evpn-gui.exe
 ```
-Run `evpn-gui.exe`. For **Full tunnel**, run it as Administrator and put
-`sing-box.exe` + `wintun.dll` next to it.
+
+For **Full tunnel**, run `evpn-gui.exe` as Administrator and put `sing-box.exe` +
+`wintun.dll` next to it.
 
 ### Using the app
-1. `Import...` the `.orb` profile (stored under your user config dir).
-2. Select it, optionally tick **Full tunnel (TUN)**, press **Connect**.
-3. The exit IP is shown once connected.
 
-- **SOCKS mode** (no admin): local SOCKS5 on `127.0.0.1:1080` — point your
-  browser/apps at it. Routes what honours a proxy.
-- **Full tunnel**: the app drives sing-box to capture the whole device (fakeip
-  DNS so names resolve server-side, UDP/QUIC allowed, the server IP kept direct
-  to avoid a loop). Needs admin/root.
+1. **Import...** your `.orb` profile (stored in your user config dir; multiple
+   profiles are kept in a list).
+2. Select a profile. Optionally tick **Full tunnel**.
+3. **Connect**. The exit IP shows once connected.
 
-Multiple profiles are kept in a list; one tunnel is active at a time.
+- **Proxy mode** (no admin): SOCKS5 on `127.0.0.1:1080` — point your browser/apps
+  at it.
+- **Full tunnel** (admin): captures the whole device via sing-box. On macOS the
+  app asks for your admin password automatically; on Windows run it elevated.
 
-## Client — CLI (optional)
+One tunnel is active at a time.
+
+---
+
+## Client — CLI
 
 ```bash
-cd cli && go build -o ../evpn .
-./evpn client -c telefonum.orb         # local SOCKS5 on 127.0.0.1:1080
+cd cli && go build -o orbi .
+./orbi client -c phone.orb                     # SOCKS5 on 127.0.0.1:1080
 curl --socks5-hostname 127.0.0.1:1080 https://ifconfig.me
 ```
 
-## Profile format
+The `orbi` binary does everything: `orbi server`, `orbi client -c FILE`,
+`orbi gen ...`. Run `orbi` with no args for usage.
+
+---
+
+## Profile format (`.orb`)
 
 ```
-name   = telefonum
-server = 138.197.214.117
+name   = phone
+server = 203.0.113.10
 port   = 8443
 path   = /api/v2/telemetry/ingest
 tls    = false
@@ -95,11 +194,60 @@ token  = <64-hex, secret>
 socks  = 127.0.0.1:1080
 ```
 
-`.orb` profiles and `peers.txt` carry secrets — they are gitignored; keep them
+`.orb` files and `peers.txt` carry secrets — they are gitignored. Keep them
 private (`chmod 600`).
 
-## Notes
+### Optional TLS
 
-- Only IPv4 is tunnelled; IPv6-only endpoints (e.g. `*-v6.*` probe hosts) won't
-  connect — expected for an IPv4 tunnel.
-- `tls = true` wraps the carrier in `wss://` (needs a TLS front on the server).
+Set `tls = true` in the profile (and front the server with TLS) to wrap the
+carrier in `wss://` so it looks like normal HTTPS.
+
+---
+
+## Environment variables
+
+Both sides also read env vars (useful for systemd / scripting):
+
+| var                | meaning                        | default                       |
+|--------------------|--------------------------------|-------------------------------|
+| `EVPN_PORT`        | server listen port             | `8443`                        |
+| `EVPN_PATH`        | carrier path                   | `/api/v2/telemetry/ingest`    |
+| `EVPN_PEERS`       | peers file                     | `/etc/orbi/peers.txt` (gen)   |
+| `EVPN_SERVER_HOST` | client: server host            | `127.0.0.1`                   |
+| `EVPN_SERVER_PORT` | client: server port            | `8443`                        |
+| `EVPN_TOKEN`       | single-token mode (no peers)   | —                             |
+| `EVPN_SOCKS`       | client: local SOCKS listen     | `127.0.0.1:1080`              |
+| `EVPN_TLS`         | `1` to use `wss://`            | —                             |
+
+---
+
+## Troubleshooting
+
+- **`bind: address already in use`** — another `orbi`/`evpn` process holds the
+  port. `ss -ltnp | grep 8443`, then `pkill -f 'orbi server'` and restart the
+  service. Don't mix `nohup` and systemd.
+- **Service keeps restarting / `status=1`** — run it in the foreground to see the
+  real error: `/usr/local/bin/orbi server -peers /etc/orbi/peers.txt`.
+- **An IPv6-only site won't open** (e.g. `*-v6.*` probe hosts) — expected; only
+  IPv4 is tunnelled.
+- **GUI build fails with a C/OpenGL error** — install the C toolchain (see
+  Requirements). Fyne can't build without it.
+- **Full tunnel says sing-box not found** — install it, or place the binary next
+  to the app.
+
+---
+
+## Building / contributing
+
+```bash
+# server + CLI
+cd cli && go build -o orbi .
+# desktop app
+cd gui && go mod tidy && go build -o orbi-gui .
+```
+
+Issues and pull requests welcome.
+
+## License
+
+Add your license here (e.g. MIT).

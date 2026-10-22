@@ -159,20 +159,20 @@ func (s *Service) StartTUN(p *Profile) error {
 // prompt (so the double-clicked .app can bring up the TUN), records the pid,
 // and stops it with another admin prompt.
 func (s *Service) startTUNDarwinElevated(sb, cfg string) error {
-	start := fmt.Sprintf(
-		`do shell script "nohup %s run -c %s >/tmp/evpn-sb.log 2>&1 & echo $!" with administrator privileges`,
+	// Kill any previous instance via its pidfile (robust across app relaunches),
+	// then start fresh and record the new pid. A pidfile avoids `pkill -f`, which
+	// would also match this launcher's own command line (it contains the config
+	// path) and kill itself.
+	shell := fmt.Sprintf(
+		"OLD=$(cat /tmp/evpn-sb.pid 2>/dev/null); kill $OLD 2>/dev/null; %s run -c %s </dev/null >/tmp/evpn-sb.log 2>&1 & echo $! > /tmp/evpn-sb.pid",
 		sb, cfg)
-	out, err := exec.Command("osascript", "-e", start).Output()
-	if err != nil {
+	start := fmt.Sprintf(`do shell script "%s" with administrator privileges`, shell)
+	if err := exec.Command("osascript", "-e", start).Run(); err != nil {
 		return fmt.Errorf("admin launch failed (sing-box): %v", err)
 	}
-	pid := strings.TrimSpace(string(out))
 	s.tunStop = func() {
-		if pid == "" {
-			return
-		}
-		kill := fmt.Sprintf(`do shell script "kill %s" with administrator privileges`, pid)
-		exec.Command("osascript", "-e", kill).Run()
+		stop := `do shell script "kill $(cat /tmp/evpn-sb.pid 2>/dev/null) 2>/dev/null; rm -f /tmp/evpn-sb.pid" with administrator privileges`
+		exec.Command("osascript", "-e", stop).Run()
 	}
 	return nil
 }

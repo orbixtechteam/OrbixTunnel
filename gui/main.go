@@ -78,25 +78,27 @@ func (u *ui) build() {
 }
 
 func (u *ui) content() fyne.CanvasObject {
+	newBtn := widget.NewButton("New...", u.onNew)
 	importBtn := widget.NewButton("Import...", u.onImport)
 	delBtn := widget.NewButton("Delete", u.onDelete)
 
 	left := container.NewBorder(
 		widget.NewLabelWithStyle("Profiles", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		container.NewGridWithColumns(2, importBtn, delBtn),
+		container.NewGridWithColumns(3, newBtn, importBtn, delBtn),
 		nil, nil,
 		u.list,
 	)
 
-	right := container.NewVBox(
+	controls := container.NewVBox(
 		u.fullTun,
 		u.connectBtn,
 		u.status,
 		u.exitIP,
 		widget.NewSeparator(),
-		widget.NewLabel("Log"),
-		container.NewVScroll(u.logView),
+		widget.NewLabelWithStyle("Log", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 	)
+	// log fills the remaining vertical space (the entry scrolls internally)
+	right := container.NewBorder(controls, nil, nil, nil, u.logView)
 
 	split := container.NewHSplit(left, right)
 	split.SetOffset(0.4)
@@ -126,6 +128,44 @@ func (u *ui) log(format string, args ...any) {
 }
 
 func (u *ui) setStatus(s string) { u.status.SetText(s) }
+
+func (u *ui) onNew() {
+	name := widget.NewEntry()
+	name.SetPlaceHolder("phone")
+	server := widget.NewEntry()
+	server.SetPlaceHolder("203.0.113.10")
+	port := widget.NewEntry()
+	port.SetText("8443")
+	token := widget.NewEntry()
+	token.SetPlaceHolder("64-hex token from the server")
+	tls := widget.NewCheck("TLS (wss)", nil)
+
+	items := []*widget.FormItem{
+		{Text: "Name", Widget: name},
+		{Text: "Server", Widget: server},
+		{Text: "Port", Widget: port},
+		{Text: "Token", Widget: token},
+		{Text: "", Widget: tls},
+	}
+	dialog.ShowForm("New profile", "Save", "Cancel", items, func(ok bool) {
+		if !ok {
+			return
+		}
+		p, err := saveProfile(&Profile{
+			Name:   name.Text,
+			Server: server.Text,
+			Port:   port.Text,
+			Token:  token.Text,
+			TLS:    tls.Checked,
+		})
+		if err != nil {
+			dialog.ShowError(err, u.win)
+			return
+		}
+		u.reload()
+		u.log("created profile %q", p.Name)
+	}, u.win)
+}
 
 func (u *ui) onImport() {
 	d := dialog.NewFileOpen(func(rc fyne.URIReadCloser, err error) {
