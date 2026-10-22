@@ -29,6 +29,9 @@ import (
 
 const helperScript = `#!/bin/bash
 CTL="$1"; APP="$2"; SB="$3"
+umask 022
+exec 2>>"$CTL/helper.log"
+echo "helper started: pid=$$ app=$APP sb=$SB" >&2
 RCFG=/var/run/orbix-sb.json
 SBPID=""
 
@@ -50,9 +53,11 @@ stop_sb() {
   flush
 }
 cleanup() { stop_sb; rm -f /var/run/orbix-sup.sh "$RCFG" "$CTL/sup.pid"; }
-trap 'cleanup; exit 0' TERM INT HUP
+trap '' HUP
+trap 'echo "helper got a signal" >&2; cleanup; exit 0' TERM INT
 
 echo $$ > "$CTL/sup.pid"
+chmod 644 "$CTL/sup.pid"
 exec 3<> "$CTL/cmd"
 while kill -0 "$APP" 2>/dev/null; do
   if read -r -t 1 -u 3 line; then
@@ -71,6 +76,7 @@ while kill -0 "$APP" 2>/dev/null; do
     esac
   fi
 done
+echo "app $APP is gone, shutting down" >&2
 cleanup
 `
 
@@ -118,25 +124,56 @@ func (h *rootHelper) ensure(sb string) error {
 		os.RemoveAll(dir)
 		return err
 	}
-	// The script travels inside the elevated command itself (base64), so there
-	// is no user-writable file that root could be tricked into running.
-	b64 := base64.StdEncoding.EncodeToString([]byte(helperScript))
-	shell := fmt.Sprintf(
-		"echo %s | base64 -D > /var/run/orbix-sup.sh && chmod 700 /var/run/orbix-sup.sh && nohup /bin/bash /var/run/orbix-sup.sh %s %d %s </dev/null >/dev/null 2>&1 &",
-		b64, shQuote(dir), os.Getpid(), shQuote(sb))
-	script := fmt.Sprintf(`do shell script "%s" with administrator privileges`, asEscape(shell))
+	script := fmt.Sprintf(`do shell script "%s" with administrator privileges`, asEscape(helperLaunchCommand(dir, os.Getpid(), sb)))
 	if err := exec.Command("osascript", "-e", script).Run(); err != nil {
 		os.RemoveAll(dir)
 		return err
 	}
 	h.dir = dir
-	for i := 0; i < 80; i++ { // wait up to 8s for the supervisor to report in
+	for i := 0; i < 120; i++ { // wait up to 12s for the supervisor to report in
 		if h.alive() {
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return errors.New("root helper did not start")
+	return fmt.Errorf("root helper did not start (%s)", h.diagnose())
+}
+
+// helperLaunchCommand is the shell command run with admin rights. The script
+// travels inside the command itself (base64), so there is no user-writable
+// file that root could be tricked into running. Output goes to launch.log in
+// the control dir so a failed start can be diagnosed. (No nohup: macOS's
+// nohup aborts with "can't detach from console" when there is no tty.)
+func helperLaunchCommand(dir string, appPID int, sb string) string {
+	b64 := base64.StdEncoding.EncodeToString([]byte(helperScript))
+	return fmt.Sprintf(
+		"( echo %s | base64 -D > /var/run/orbix-sup.sh && chmod 700 /var/run/orbix-sup.sh && /bin/bash /var/run/orbix-sup.sh %s %d %s ) </dev/null >%s 2>&1 &",
+		b64, shQuote(dir), appPID, shQuote(sb), shQuote(filepath.Join(dir, "launch.log")))
+}
+
+// diagnose explains why the supervisor did not come up, from its own logs.
+func (h *rootHelper) diagnose() string {
+	var parts []string
+	for _, f := range []string{"launch.log", "helper.log"} {
+		if b, err := os.ReadFile(filepath.Join(h.dir, f)); err == nil {
+			if t := strings.TrimSpace(string(b)); t != "" {
+				if len(t) > 300 {
+					t = t[len(t)-300:]
+				}
+				parts = append(parts, f+": "+t)
+			}
+		}
+	}
+	if _, err := os.Stat("/var/run/orbix-sup.sh"); err != nil {
+		parts = append(parts, "script was not written to /var/run")
+	}
+	if _, err := os.Stat(filepath.Join(h.dir, "sup.pid")); err != nil {
+		parts = append(parts, "no sup.pid")
+	}
+	if len(parts) == 0 {
+		return "no details"
+	}
+	return strings.Join(parts, "; ")
 }
 
 func (h *rootHelper) lastLog() string {
