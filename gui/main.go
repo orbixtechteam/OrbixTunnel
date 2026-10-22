@@ -76,8 +76,12 @@ func (u *ui) setupTray(a fyne.App) {
 }
 
 func (u *ui) quit(a fyne.App) {
-	if u.svc != nil {
-		u.svc.Stop()
+	// If the tunnel can't be torn down (admin prompt cancelled), stay open:
+	// quitting now would leave sing-box routing everything into a dead proxy.
+	if u.svc != nil && !u.svc.Stop() {
+		u.log("could not stop the tunnel (admin cancelled?) - not quitting")
+		u.win.Show()
+		return
 	}
 	a.Quit()
 }

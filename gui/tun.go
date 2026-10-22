@@ -166,6 +166,7 @@ func (s *Service) StartTUN(p *Profile) error {
 				cmd.Process.Kill()
 			}
 		}
+		flushDNS()
 		return true
 	}
 	return nil
@@ -192,7 +193,7 @@ func (s *Service) startTUNDarwinElevated(sb, cfg string) error {
 	s.tunStop = func() bool {
 		// SIGTERM sing-box, then wait (as root) until it has actually exited so
 		// it finishes restoring the system routes before we close the SOCKS proxy.
-		stop := `do shell script "P=$(cat /tmp/evpn-sb.pid 2>/dev/null); kill $P 2>/dev/null; for i in $(seq 1 25); do kill -0 $P 2>/dev/null || break; sleep 0.2; done; rm -f /tmp/evpn-sb.pid" with administrator privileges`
+		stop := `do shell script "P=$(cat /tmp/evpn-sb.pid 2>/dev/null); kill $P 2>/dev/null; for i in $(seq 1 25); do kill -0 $P 2>/dev/null || break; sleep 0.2; done; kill -0 $P 2>/dev/null && kill -9 $P 2>/dev/null; rm -f /tmp/evpn-sb.pid; dscacheutil -flushcache; killall -HUP mDNSResponder" with administrator privileges`
 		return exec.Command("osascript", "-e", stop).Run() == nil
 	}
 	return nil
@@ -207,4 +208,16 @@ func shQuote(s string) string {
 func asEscape(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)
 	return strings.ReplaceAll(s, `"`, `\"`)
+}
+
+// flushDNS drops cached fake-IP (198.18.0.0/15) answers after the tunnel is
+// gone; otherwise apps keep resolving names to dead addresses for a while and
+// the internet looks "down" right after disconnect.
+func flushDNS() {
+	switch runtime.GOOS {
+	case "windows":
+		exec.Command("ipconfig", "/flushdns").Run()
+	case "linux":
+		exec.Command("resolvectl", "flush-caches").Run()
+	}
 }

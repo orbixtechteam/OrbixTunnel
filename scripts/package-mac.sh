@@ -37,7 +37,10 @@ fi
 echo ">> building $APP.dmg"
 cd "$root"
 rm -f "$APP.dmg"
-hdiutil create -volname "$APP" -srcfolder "$APP.app" -ov -format UDZO "$APP.dmg"
+# size the image explicitly (hdiutil's auto-estimate runs out of space with the
+# bundled sing-box binary): app size + 100 MB headroom.
+SIZE_MB=$(( $(du -sm "$APP.app" | cut -f1) + 100 ))
+hdiutil create -volname "$APP" -srcfolder "$APP.app" -ov -fs HFS+ -size "${SIZE_MB}m" -format UDZO "$APP.dmg"
 
 echo
 echo "built:  $root/$APP.app   $root/$APP.dmg"
