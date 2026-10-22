@@ -17,20 +17,27 @@ import (
 	"time"
 )
 
+// findSingbox prefers the copy bundled next to the app executable (inside
+// Orbix Tunnel.app/Contents/MacOS on macOS), then PATH, then common install dirs.
 func findSingbox() string {
-	if p, err := exec.LookPath("sing-box"); err == nil {
-		return p
-	}
 	var cands []string
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		cands = append(cands, filepath.Join(dir, "sing-box"), filepath.Join(dir, "sing-box.exe"))
 	}
-	cands = append(cands,
+	for _, c := range cands {
+		if st, err := os.Stat(c); err == nil && !st.IsDir() {
+			return c
+		}
+	}
+	if p, err := exec.LookPath("sing-box"); err == nil {
+		return p
+	}
+	cands = []string{
 		"/opt/homebrew/opt/sing-box/bin/sing-box",
 		"/usr/local/bin/sing-box",
 		"/usr/bin/sing-box",
-	)
+	}
 	for _, c := range cands {
 		if st, err := os.Stat(c); err == nil && !st.IsDir() {
 			return c
@@ -131,7 +138,7 @@ func writeSingboxConfig(p *Profile) (string, error) {
 func (s *Service) StartTUN(p *Profile) error {
 	sb := findSingbox()
 	if sb == "" {
-		return errors.New("sing-box not found - install it (brew install sing-box) or place the binary next to the app")
+		return errors.New("sing-box not found - rebuild the app with scripts/package-mac.sh (it bundles sing-box), or install it (brew install sing-box)")
 	}
 	cfg, err := writeSingboxConfig(p)
 	if err != nil {
@@ -172,10 +179,13 @@ func (s *Service) startTUNDarwinElevated(sb, cfg string) error {
 	// then start fresh and record the new pid. A pidfile avoids `pkill -f`, which
 	// would also match this launcher's own command line (it contains the config
 	// path) and kill itself.
+	// The binary may live in "Orbix Tunnel.app" (space in the path), so both
+	// paths are single-quoted for the shell and the whole command is escaped
+	// for the AppleScript string literal.
 	shell := fmt.Sprintf(
 		"OLD=$(cat /tmp/evpn-sb.pid 2>/dev/null); kill $OLD 2>/dev/null; %s run -c %s </dev/null >/tmp/evpn-sb.log 2>&1 & echo $! > /tmp/evpn-sb.pid",
-		sb, cfg)
-	start := fmt.Sprintf(`do shell script "%s" with administrator privileges`, shell)
+		shQuote(sb), shQuote(cfg))
+	start := fmt.Sprintf(`do shell script "%s" with administrator privileges`, asEscape(shell))
 	if err := exec.Command("osascript", "-e", start).Run(); err != nil {
 		return fmt.Errorf("admin launch failed (sing-box): %v", err)
 	}
@@ -186,4 +196,15 @@ func (s *Service) startTUNDarwinElevated(sb, cfg string) error {
 		return exec.Command("osascript", "-e", stop).Run() == nil
 	}
 	return nil
+}
+
+// shQuote single-quotes s for a POSIX shell.
+func shQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// asEscape escapes s for use inside an AppleScript double-quoted string.
+func asEscape(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	return strings.ReplaceAll(s, `"`, `\"`)
 }

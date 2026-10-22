@@ -23,6 +23,17 @@ rm -rf "$root/$APP.app"
 fyne package -os darwin -name "$APP" -icon Icon.png -id com.orbixlab.orbi
 mv -f "$APP.app" "$root/$APP.app"
 
+# bundle sing-box (Full tunnel engine) so users don't have to install it.
+# Override the source with SINGBOX_BIN=/path/to/sing-box.
+SB="${SINGBOX_BIN:-$(command -v sing-box || true)}"
+if [ -n "$SB" ] && [ -f "$SB" ]; then
+  echo ">> bundling sing-box from $SB"
+  cp -L "$SB" "$root/$APP.app/Contents/MacOS/sing-box"
+  chmod 755 "$root/$APP.app/Contents/MacOS/sing-box"
+else
+  echo "!! sing-box not found (brew install sing-box, or set SINGBOX_BIN) - Full tunnel will not work in this build"
+fi
+
 echo ">> building $APP.dmg"
 cd "$root"
 rm -f "$APP.dmg"
@@ -31,4 +42,4 @@ hdiutil create -volname "$APP" -srcfolder "$APP.app" -ov -format UDZO "$APP.dmg"
 echo
 echo "built:  $root/$APP.app   $root/$APP.dmg"
 echo "Open the .dmg and drag $APP to Applications. Double-click to run."
-echo "Full tunnel asks for your admin password (needs: brew install sing-box)."
+echo "Full tunnel asks for your admin password (sing-box is bundled in the app)."

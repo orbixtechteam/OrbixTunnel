@@ -34,7 +34,7 @@ app ─▶ SOCKS5 (local)          ┌─ WebSocket /api/v2/telemetry/ingest ─
 2. The server dials the real destination (TCP) or relays datagrams (UDP) and
    pipes the bytes back.
 3. A plain HTTP request to the path (or a wrong token) just returns
-   `{"ok":true,"app":"orbix-telemetry"}` — it looks like a boring API.
+   `{"ok":true,"app":"telemetry"}` — it looks like a boring API.
 
 ---
 
@@ -54,8 +54,9 @@ scripts/  build & install helpers
 - **Build from source:** Go 1.22+.
 - **Desktop GUI:** a C toolchain (macOS: `xcode-select --install`; Windows:
   mingw-w64 / TDM-GCC on `PATH`) — Fyne needs it.
-- **Full tunnel:** [sing-box](https://sing-box.sagernet.org) on the client
-  (`brew install sing-box`; on Windows also `wintun.dll`).
+- **Full tunnel (build time):** [sing-box](https://sing-box.sagernet.org) on the
+  build machine (`brew install sing-box`; on Windows also `wintun.dll`). It is
+  bundled into the app, so end users install nothing.
 
 ---
 
@@ -99,7 +100,7 @@ orbi gen -name phone -server <IP> -port 8443 -path /api/game/v4 \
 ```
 
 A request with the wrong path (or wrong token) just gets the boring
-`{"ok":true,"app":"orbix-telemetry"}` response (the `app` value is configurable:
+`{"ok":true,"app":"telemetry"}` response (the `app` value is configurable:
 `orbi server -app myservice` or `EVPN_APP_NAME`) — the tunnel never opens, so a
 mismatched path doubles as camouflage. Port is configurable the same way
 (`-port` / `EVPN_PORT`).
@@ -173,8 +174,9 @@ Install Go and a C compiler (mingw-w64 / TDM-GCC on `PATH`), then in PowerShell:
 scripts\build-windows.ps1       # -> evpn-gui.exe
 ```
 
-For **Full tunnel**, run `evpn-gui.exe` as Administrator and put `sing-box.exe` +
-`wintun.dll` next to it.
+For **Full tunnel**, run `evpn-gui.exe` as Administrator. The build script copies
+`sing-box.exe` + `wintun.dll` next to it (set `SINGBOX_DIR` to a folder that holds
+both); ship all three files together.
 
 ### Using the app
 
@@ -241,7 +243,7 @@ Both sides also read env vars (useful for systemd / scripting):
 | `EVPN_SERVER_HOST` | client: server host            | `127.0.0.1`                   |
 | `EVPN_SERVER_PORT` | client: server port            | `8443`                        |
 | `EVPN_TOKEN`       | single-token mode (no peers)   | —                             |
-| `EVPN_APP_NAME`    | server: `app` value in the decoy JSON response | `orbix-telemetry` |
+| `EVPN_APP_NAME`    | server: `app` value in the decoy JSON response | `telemetry` |
 | `EVPN_SOCKS`       | client: local SOCKS listen     | `127.0.0.1:1080`              |
 | `EVPN_TLS`         | `1` to use `wss://`            | —                             |
 
@@ -258,7 +260,8 @@ Both sides also read env vars (useful for systemd / scripting):
   IPv4 is tunnelled.
 - **GUI build fails with a C/OpenGL error** — install the C toolchain (see
   Requirements). Fyne can't build without it.
-- **Full tunnel says sing-box not found** — install it, or place the binary next
+- **Full tunnel says sing-box not found** — rebuild with `scripts/package-mac.sh`
+  (bundles it), install it, or place the binary next
   to the app.
 
 ---
