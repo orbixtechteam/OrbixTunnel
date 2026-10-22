@@ -1,0 +1,13 @@
+# built binaries
+/evpn
+/evpn.exe
+/evpn-gui
+/evpn-gui.exe
+/evpn-linux-amd64
+
+# client profiles (contain secret tokens) and runtime state
+*.evpn
+peers.txt
+cache.db
+evpn-fakeip.db
+*.log
