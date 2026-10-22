@@ -1,5 +1,7 @@
 # Orbi-VPN
 
+*by Orbix Lab*
+
 A lightweight, self-hosted anti-censorship tunnel. The carrier looks like an
 ordinary telemetry API (`POST /api/v2/telemetry/ingest`); a WebSocket upgrade on
 that same path opens the real tunnel. Traffic is multiplexed over one connection
@@ -165,7 +167,9 @@ For **Full tunnel**, run `evpn-gui.exe` as Administrator and put `sing-box.exe` 
 - **Full tunnel** (admin): captures the whole device via sing-box. On macOS the
   app asks for your admin password automatically; on Windows run it elevated.
 
-One tunnel is active at a time.
+One tunnel is active at a time. Closing the window keeps the app running in the
+menu-bar tray (the tunnel stays up); use the tray's **Quit** to exit and tear
+the tunnel down.
 
 ---
 
@@ -246,8 +250,8 @@ cd cli && go build -o orbi .
 cd gui && go mod tidy && go build -o orbi-gui .
 ```
 
-Issues and pull requests welcome.
+Issues and pull requests welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Add your license here (e.g. MIT).
+© 2026 Orbix Lab. Licensed under the [GNU AGPL-3.0](LICENSE).

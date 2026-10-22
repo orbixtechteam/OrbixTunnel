@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
@@ -42,14 +43,10 @@ func main() {
 	u.build()
 	u.reload()
 
-	// Closing the window (or quitting) must tear down the tunnel, otherwise the
-	// root sing-box process keeps the TUN up and the machine loses internet.
-	w.SetCloseIntercept(func() {
-		if u.connected {
-			u.disconnect()
-		}
-		w.Close()
-	})
+	u.setupTray(a)
+	// Closing the window keeps the app (and the tunnel) alive in the tray.
+	// Quit from the tray (or Cmd+Q) tears the tunnel down cleanly.
+	w.SetCloseIntercept(func() { w.Hide() })
 	a.Lifecycle().SetOnStopped(func() {
 		if u.svc != nil {
 			u.svc.Stop()
@@ -58,6 +55,31 @@ func main() {
 
 	w.SetContent(u.content())
 	w.ShowAndRun()
+}
+
+func (u *ui) setupTray(a fyne.App) {
+	desk, ok := a.(desktop.App)
+	if !ok {
+		return
+	}
+	m := fyne.NewMenu("Orbi-VPN",
+		fyne.NewMenuItem("Show", func() { u.win.Show(); u.win.RequestFocus() }),
+		fyne.NewMenuItem("Disconnect", func() {
+			if u.connected {
+				u.disconnect()
+			}
+		}),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Quit", func() { u.quit(a) }),
+	)
+	desk.SetSystemTrayMenu(m)
+}
+
+func (u *ui) quit(a fyne.App) {
+	if u.svc != nil {
+		u.svc.Stop()
+	}
+	a.Quit()
 }
 
 func (u *ui) build() {

@@ -19,7 +19,7 @@ go run "$root/scripts/mkicon.go" Icon.png
 echo ">> packaging Orbi-VPN.app"
 go mod tidy
 rm -rf "$root/Orbi-VPN.app"
-fyne package -os darwin -name Orbi-VPN -icon Icon.png -id com.orbi.vpn
+fyne package -os darwin -name Orbi-VPN -icon Icon.png -id com.orbixlab.orbi
 mv -f Orbi-VPN.app "$root/Orbi-VPN.app"
 
 echo ">> building Orbi-VPN.dmg"

@@ -14,14 +14,14 @@ import (
 
 const (
 	size   = 1024
-	margin = 70.0  // white border around the rounded square
-	radius = 230.0 // corner radius of the rounded square
-	ringR  = 330.0 // ring outer radius
-	ringW  = 44.0  // ring thickness
+	margin = 0.0    // full-bleed: no border, corners are transparent
+	radius = 230.0  // corner radius of the rounded square (~macOS squircle)
+	ringR  = 330.0  // ring outer radius
+	ringW  = 44.0   // ring thickness
 )
 
 var (
-	white = color.NRGBA{0xff, 0xff, 0xff, 0xff}
+	clear = color.NRGBA{0x00, 0x00, 0x00, 0x00} // transparent outside the square
 	black = color.NRGBA{0x0a, 0x0a, 0x0f, 0xff}
 	ring  = color.NRGBA{0xfd, 0xf2, 0xf2, 0xff}
 )
@@ -61,7 +61,7 @@ func main() {
 	for y := 0; y < size; y++ {
 		for x := 0; x < size; x++ {
 			px, py := float64(x)+0.5, float64(y)+0.5
-			c := white
+			c := clear
 			if inRoundRect(px, py, x0, y0, x1, y1, radius) {
 				c = black
 				if d := math.Hypot(px-cx, py-cy); d <= ringR && d >= ringR-ringW {
