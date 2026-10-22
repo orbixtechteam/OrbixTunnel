@@ -221,7 +221,7 @@ func (c *carrier) close() {
 type Service struct {
 	car     *carrier
 	ln      net.Listener
-	tunStop func()
+	tunStop func() bool // returns false if the tunnel could not be torn down
 }
 
 func StartService(p *Profile) (*Service, error) {
@@ -249,12 +249,19 @@ func StartService(p *Profile) (*Service, error) {
 	return s, nil
 }
 
-func (s *Service) Stop() {
+// Stop tears the tunnel down. For full tunnel it first stops sing-box and waits
+// for it to exit (so system routes are restored) BEFORE closing the local SOCKS
+// proxy — otherwise traffic is black-holed while the TUN is still up. If sing-box
+// can't be stopped (e.g. the admin prompt was cancelled) it returns false and
+// leaves everything running so the machine keeps its connectivity.
+func (s *Service) Stop() bool {
 	if s == nil {
-		return
+		return true
 	}
 	if s.tunStop != nil {
-		s.tunStop()
+		if !s.tunStop() {
+			return false
+		}
 		s.tunStop = nil
 	}
 	if s.ln != nil {
@@ -263,6 +270,7 @@ func (s *Service) Stop() {
 	if s.car != nil {
 		s.car.close()
 	}
+	return true
 }
 
 // ExitIP fetches the public IP seen through the given SOCKS5 proxy.

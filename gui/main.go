@@ -290,7 +290,10 @@ func (u *ui) onConnect() {
 
 func (u *ui) disconnect() {
 	if u.svc != nil {
-		u.svc.Stop()
+		if !u.svc.Stop() {
+			u.log("could not stop the tunnel (admin cancelled?) - still connected")
+			return
+		}
 		u.svc = nil
 	}
 	u.connected = false

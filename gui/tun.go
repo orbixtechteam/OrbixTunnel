@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 func findSingbox() string {
@@ -147,10 +148,18 @@ func (s *Service) StartTUN(p *Profile) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	s.tunStop = func() {
+	s.tunStop = func() bool {
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			cmd.Process.Signal(os.Interrupt) // let sing-box restore routes
+			done := make(chan struct{})
+			go func() { cmd.Wait(); close(done) }()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				cmd.Process.Kill()
+			}
 		}
+		return true
 	}
 	return nil
 }
@@ -170,9 +179,11 @@ func (s *Service) startTUNDarwinElevated(sb, cfg string) error {
 	if err := exec.Command("osascript", "-e", start).Run(); err != nil {
 		return fmt.Errorf("admin launch failed (sing-box): %v", err)
 	}
-	s.tunStop = func() {
-		stop := `do shell script "kill $(cat /tmp/evpn-sb.pid 2>/dev/null) 2>/dev/null; rm -f /tmp/evpn-sb.pid" with administrator privileges`
-		exec.Command("osascript", "-e", stop).Run()
+	s.tunStop = func() bool {
+		// SIGTERM sing-box, then wait (as root) until it has actually exited so
+		// it finishes restoring the system routes before we close the SOCKS proxy.
+		stop := `do shell script "P=$(cat /tmp/evpn-sb.pid 2>/dev/null); kill $P 2>/dev/null; for i in $(seq 1 25); do kill -0 $P 2>/dev/null || break; sleep 0.2; done; rm -f /tmp/evpn-sb.pid" with administrator privileges`
+		return exec.Command("osascript", "-e", stop).Run() == nil
 	}
 	return nil
 }
