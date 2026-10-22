@@ -118,10 +118,10 @@ func (u *ui) reload() {
 
 func (u *ui) log(format string, args ...any) {
 	line := time.Now().Format("15:04:05") + "  " + fmt.Sprintf(format, args...) + "\n"
-	fyne.Do(func() { u.logView.SetText(u.logView.Text + line) })
+	u.logView.SetText(u.logView.Text + line)
 }
 
-func (u *ui) setStatus(s string) { fyne.Do(func() { u.status.SetText(s) }) }
+func (u *ui) setStatus(s string) { u.status.SetText(s) }
 
 func (u *ui) onImport() {
 	dialog.ShowFileOpen(func(rc fyne.URIReadCloser, err error) {
@@ -194,14 +194,12 @@ func (u *ui) onConnect() {
 		}
 		u.svc = svc
 		u.connected = true
-		fyne.Do(func() {
-			u.connectBtn.SetText("Disconnect")
-			u.connectBtn.Enable()
-		})
+		u.connectBtn.SetText("Disconnect")
+		u.connectBtn.Enable()
 		u.setStatus("connected")
 
 		if ip, err := ExitIP(p.Socks); err == nil {
-			fyne.Do(func() { u.exitIP.SetText("Exit IP: " + ip) })
+			u.exitIP.SetText("Exit IP: " + ip)
 			u.log("exit IP: %s", ip)
 		} else {
 			u.log("exit IP check failed: %v", err)
@@ -223,10 +221,8 @@ func (u *ui) disconnect() {
 }
 
 func (u *ui) fail(msg string) {
-	fyne.Do(func() {
-		u.connectBtn.SetText("Connect")
-		u.connectBtn.Enable()
-		u.status.SetText("error")
-	})
+	u.connectBtn.SetText("Connect")
+	u.connectBtn.Enable()
+	u.status.SetText("error")
 	u.log("%s", msg)
 }
