@@ -91,11 +91,11 @@ match on the server and in every client profile.
 
 ```bash
 # server
-orbi server -peers /etc/orbi/peers.txt -port 8443 -path /api/game/v4
-#   or in systemd:  systemctl edit orbi  ->  Environment=EVPN_PATH=/api/game/v4
+orbi server -peers /etc/orbi/peers.txt -port 8443 -path /your/custom/path
+#   or in systemd:  systemctl edit orbi  ->  Environment=EVPN_PATH=/your/custom/path
 
 # generate a profile that uses the same path
-orbi gen -name phone -server <IP> -port 8443 -path /api/game/v4 \
+orbi gen -name phone -server <IP> -port 8443 -path /your/custom/path \
   -peers /etc/orbi/peers.txt -out phone.orb
 ```
 
