@@ -138,7 +138,7 @@ func writeSingboxConfig(p *Profile) (string, error) {
 func (s *Service) StartTUN(p *Profile) error {
 	sb := findSingbox()
 	if sb == "" {
-		return errors.New("sing-box not found - rebuild the app with scripts/package-mac.sh (it bundles sing-box), or install it (brew install sing-box)")
+		return errors.New("sing-box not found - use the packaged app (it bundles sing-box), or install it (macOS: brew install sing-box) / put sing-box next to the app")
 	}
 	cfg, err := writeSingboxConfig(p)
 	if err != nil {
@@ -154,14 +154,21 @@ func (s *Service) StartTUN(p *Profile) error {
 	cmd := exec.Command(sb, "run", "-c", cfg)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	hideConsole(cmd) // Windows: no extra console window next to the GUI
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 	s.tunStop = func() bool {
 		if cmd.Process != nil {
-			cmd.Process.Signal(os.Interrupt) // let sing-box restore routes
 			done := make(chan struct{})
 			go func() { cmd.Wait(); close(done) }()
+			if runtime.GOOS == "windows" {
+				// Windows has no graceful signal for a console-less child; the
+				// wintun adapter (and its routes) disappear with the process.
+				cmd.Process.Kill()
+			} else {
+				cmd.Process.Signal(os.Interrupt) // let sing-box restore routes
+			}
 			select {
 			case <-done:
 			case <-time.After(5 * time.Second):

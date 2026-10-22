@@ -18,3 +18,7 @@ Icon.png
 cache.db
 evpn-fakeip.db
 *.log
+
+# packaging output
+dist/
+*.syso

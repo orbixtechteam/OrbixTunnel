@@ -166,17 +166,44 @@ bash scripts/package-mac.sh     # app bundle -> Orbix Tunnel.app + Orbix Tunnel.
 
 Open `Orbix Tunnel.dmg`, drag **Orbix Tunnel** to Applications, launch it.
 
-### Windows
+The package script ad-hoc signs the app (no Apple account needed) and bundles
+sing-box for Full tunnel. It is **not notarized**, so on another Mac (AirDrop,
+download, chat) macOS may say the app *"is damaged and can't be opened"*. The
+app is fine; macOS just quarantines unsigned downloads. Fix it once:
 
-Install Go and a C compiler (mingw-w64 / TDM-GCC on `PATH`), then in PowerShell:
-
-```powershell
-scripts\build-windows.ps1       # -> evpn-gui.exe
+```bash
+xattr -cr "/Applications/Orbix Tunnel.app"
 ```
 
-For **Full tunnel**, run `evpn-gui.exe` as Administrator. The build script copies
-`sing-box.exe` + `wintun.dll` next to it (set `SINGBOX_DIR` to a folder that holds
-both); ship all three files together.
+then open it normally (or right-click the app > **Open**). To remove the
+warning entirely you need an Apple Developer ID and notarization.
+
+### Windows
+
+One-time setup (PowerShell):
+
+```powershell
+winget install GoLang.Go
+winget install BrechtSanders.WinLibs.POSIX.UCRT   # C compiler (mingw-w64) for Fyne
+winget install Git.Git
+```
+
+Open a **new** PowerShell window and check `go version` and `gcc --version`. Then,
+in the repo folder:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\package-windows.ps1          # -> dist\Orbix-Tunnel-<version>-windows-amd64.zip
+```
+
+The zip holds `Orbix Tunnel.exe` (icon, version info, asks for admin via UAC),
+`sing-box.exe` and `wintun.dll` (downloaded automatically; set `SINGBOX_DIR` to a
+folder that already has both to use local copies), plus a short README. Extract it
+anywhere and run `Orbix Tunnel.exe`; keep the three files together. The app is not
+code-signed, so SmartScreen may warn: **More info > Run anyway**.
+
+For a quick developer build without packaging, `.\scripts\build-windows.ps1`
+produces `evpn-gui.exe` (run it as Administrator for Full tunnel).
 
 ### Using the app
 
@@ -260,6 +287,9 @@ Both sides also read env vars (useful for systemd / scripting):
   real error: `/usr/local/bin/orbi server -peers /etc/orbi/peers.txt`.
 - **An IPv6-only site won't open** (e.g. `*-v6.*` probe hosts) — expected; only
   IPv4 is tunnelled.
+- **macOS: "Orbix Tunnel is damaged and can't be opened"** — Gatekeeper
+  quarantine on an app that isn't notarized. Run
+  `xattr -cr "/Applications/Orbix Tunnel.app"`, or right-click > **Open**.
 - **GUI build fails with a C/OpenGL error** — install the C toolchain (see
   Requirements). Fyne can't build without it.
 - **Full tunnel says sing-box not found** — rebuild with `scripts/package-mac.sh`
