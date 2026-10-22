@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -33,6 +34,7 @@ type ui struct {
 
 func main() {
 	a := app.New()
+	a.Settings().SetTheme(forcedDark{})
 	w := a.NewWindow("eVPN")
 	w.Resize(fyne.NewSize(720, 480))
 
@@ -62,15 +64,17 @@ func (u *ui) build() {
 		}
 	}
 
-	u.fullTun = widget.NewCheck("Full tunnel (TUN, needs admin)", nil)
+	u.fullTun = widget.NewCheck("Full tunnel (whole device - will ask for admin)", nil)
 	u.connectBtn = widget.NewButton("Connect", u.onConnect)
 	u.connectBtn.Importance = widget.HighImportance
 	u.status = widget.NewLabel("disconnected")
 	u.exitIP = widget.NewLabel("Exit IP: -")
 
 	u.logView = widget.NewMultiLineEntry()
+	u.logView.TextStyle = fyne.TextStyle{Monospace: true}
+	u.logView.Wrapping = fyne.TextWrapWord
 	u.logView.Disable()
-	u.logView.SetMinRowsVisible(6)
+	u.logView.SetMinRowsVisible(8)
 }
 
 func (u *ui) content() fyne.CanvasObject {
@@ -124,7 +128,7 @@ func (u *ui) log(format string, args ...any) {
 func (u *ui) setStatus(s string) { u.status.SetText(s) }
 
 func (u *ui) onImport() {
-	dialog.ShowFileOpen(func(rc fyne.URIReadCloser, err error) {
+	d := dialog.NewFileOpen(func(rc fyne.URIReadCloser, err error) {
 		if err != nil || rc == nil {
 			return
 		}
@@ -138,6 +142,8 @@ func (u *ui) onImport() {
 		u.reload()
 		u.log("imported profile %q", p.Name)
 	}, u.win)
+	d.SetFilter(storage.NewExtensionFileFilter([]string{".orb", ".evpn"}))
+	d.Show()
 }
 
 func (u *ui) onDelete() {

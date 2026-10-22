@@ -85,7 +85,7 @@ func listProfiles() []*Profile {
 	entries, _ := os.ReadDir(dir)
 	var out []*Profile
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".evpn") {
+		if e.IsDir() || !isProfileFile(e.Name()) {
 			continue
 		}
 		if p, err := loadProfile(filepath.Join(dir, e.Name())); err == nil {
@@ -107,7 +107,7 @@ func importProfile(srcFile string) (*Profile, error) {
 	if p.Server == "" || p.Token == "" {
 		return nil, errors.New("not a valid eVPN profile (missing server or token)")
 	}
-	dst := filepath.Join(profilesDir(), sanitize(p.Name)+".evpn")
+	dst := filepath.Join(profilesDir(), sanitize(p.Name)+".orb")
 	if err := os.WriteFile(dst, data, 0600); err != nil {
 		return nil, err
 	}
@@ -120,6 +120,10 @@ func deleteProfile(p *Profile) error {
 		return nil
 	}
 	return os.Remove(p.File)
+}
+
+func isProfileFile(name string) bool {
+	return strings.HasSuffix(name, ".orb") || strings.HasSuffix(name, ".evpn")
 }
 
 func sanitize(s string) string {

@@ -28,10 +28,10 @@ needed — new tokens are accepted live):
 
 ```bash
 evpn gen -name telefonum -server $(curl -s ifconfig.me) -port 8443 \
-  -peers /etc/evpn/peers.txt -out telefonum.evpn
+  -peers /etc/evpn/peers.txt -out telefonum.orb
 ```
 
-Copy `telefonum.evpn` to the client. Manage the service with
+Copy `telefonum.orb` to the client. Manage the service with
 `systemctl status|restart|stop evpn`. Revoke a client by deleting its line in
 `/etc/evpn/peers.txt`.
 
@@ -47,10 +47,12 @@ scp evpn-linux-amd64 root@SERVER:/usr/local/bin/evpn
 ### macOS
 ```bash
 xcode-select --install        # once, for the Fyne GUI toolchain
-bash scripts/build-mac.sh     # -> ./evpn-gui (and ./evpn CLI)
-./evpn-gui                     # SOCKS mode (no admin)
-sudo ./evpn-gui                # Full tunnel (TUN) — needs: brew install sing-box
+bash scripts/build-mac.sh     # quick: -> ./evpn-gui (and ./evpn CLI)
+bash scripts/package-mac.sh   # app: -> eVPN.app + eVPN.dmg (double-clickable)
 ```
+Open `eVPN.dmg`, drag **eVPN** to Applications, launch it. SOCKS mode needs no
+admin; **Full tunnel** asks for your admin password (needs `brew install
+sing-box`). From a terminal you can also run `./evpn-gui` or `sudo ./evpn-gui`.
 
 ### Windows
 Install Go and a C compiler (mingw-w64 / TDM-GCC on PATH), then in PowerShell:
@@ -61,7 +63,7 @@ Run `evpn-gui.exe`. For **Full tunnel**, run it as Administrator and put
 `sing-box.exe` + `wintun.dll` next to it.
 
 ### Using the app
-1. `Import...` the `.evpn` profile (stored under your user config dir).
+1. `Import...` the `.orb` profile (stored under your user config dir).
 2. Select it, optionally tick **Full tunnel (TUN)**, press **Connect**.
 3. The exit IP is shown once connected.
 
@@ -77,7 +79,7 @@ Multiple profiles are kept in a list; one tunnel is active at a time.
 
 ```bash
 cd cli && go build -o ../evpn .
-./evpn client -c telefonum.evpn        # local SOCKS5 on 127.0.0.1:1080
+./evpn client -c telefonum.orb         # local SOCKS5 on 127.0.0.1:1080
 curl --socks5-hostname 127.0.0.1:1080 https://ifconfig.me
 ```
 
@@ -93,7 +95,7 @@ token  = <64-hex, secret>
 socks  = 127.0.0.1:1080
 ```
 
-`.evpn` profiles and `peers.txt` carry secrets — they are gitignored; keep them
+`.orb` profiles and `peers.txt` carry secrets — they are gitignored; keep them
 private (`chmod 600`).
 
 ## Notes

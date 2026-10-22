@@ -6,8 +6,12 @@
 /evpn-linux-amd64
 
 # client profiles (contain secret tokens) and runtime state
+*.orb
 *.evpn
 peers.txt
+Icon.png
+*.app
+*.dmg
 cache.db
 evpn-fakeip.db
 *.log

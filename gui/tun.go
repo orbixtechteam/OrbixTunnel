@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -135,6 +136,11 @@ func (s *Service) StartTUN(p *Profile) error {
 	if err != nil {
 		return err
 	}
+	// macOS app double-clicked (not root): launch sing-box via an admin prompt.
+	if runtime.GOOS == "darwin" && os.Geteuid() != 0 {
+		return s.startTUNDarwinElevated(sb, cfg)
+	}
+
 	cmd := exec.Command(sb, "run", "-c", cfg)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -145,6 +151,28 @@ func (s *Service) StartTUN(p *Profile) error {
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
+	}
+	return nil
+}
+
+// startTUNDarwinElevated runs sing-box as root through an osascript admin
+// prompt (so the double-clicked .app can bring up the TUN), records the pid,
+// and stops it with another admin prompt.
+func (s *Service) startTUNDarwinElevated(sb, cfg string) error {
+	start := fmt.Sprintf(
+		`do shell script "nohup %s run -c %s >/tmp/evpn-sb.log 2>&1 & echo $!" with administrator privileges`,
+		sb, cfg)
+	out, err := exec.Command("osascript", "-e", start).Output()
+	if err != nil {
+		return fmt.Errorf("admin launch failed (sing-box): %v", err)
+	}
+	pid := strings.TrimSpace(string(out))
+	s.tunStop = func() {
+		if pid == "" {
+			return
+		}
+		kill := fmt.Sprintf(`do shell script "kill %s" with administrator privileges`, pid)
+		exec.Command("osascript", "-e", kill).Run()
 	}
 	return nil
 }
